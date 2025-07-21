@@ -6,6 +6,7 @@
 # Checks for 64-bit OS to include Obsidian.md
 # Supports HDMI displays by default and GPIO displays (3.5" to 1080p)
 # Sets up Wi-Fi hotspot, activates if no known network is found
+# Automatically checks for the latest software versions
 
 # Exit on error
 set -e
@@ -16,12 +17,14 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# Check for whiptail
-if ! command -v whiptail &> /dev/null; then
-    echo "Installing whiptail..."
-    apt-get update
-    apt-get install -y whiptail
-fi
+# Check for required dependencies (whiptail, curl, jq)
+for cmd in whiptail curl jq; do
+    if ! command -v $cmd &> /dev/null; then
+        echo "Installing $cmd..."
+        apt-get update
+        apt-get install -y $cmd
+    fi
+done
 
 # Check for snapd and install if missing
 if ! command -v snap &> /dev/null; then
@@ -43,6 +46,41 @@ fi
 # Inform user about installation time
 whiptail --msgbox "Welcome to the Raspi-Writer installer!\n\nA full installation with all software may take 20-60 minutes, depending on your network speed and Raspberry Pi model (e.g., Pi Zero is slower). Ensure a stable internet connection." 12 60
 
+# Function to get latest GitHub release URL
+get_latest_github_release() {
+    repo=$1
+    asset_pattern=$2
+    fallback_url=$3
+    url=$(curl -s "https://api.github.com/repos/$repo/releases/latest" | jq -r ".assets[] | select(.name | test(\"$asset_pattern\")) | .browser_download_url" | head -n 1)
+    if [ -z "$url" ]; then
+        echo "$fallback_url"
+    else
+        echo "$url"
+    fi
+}
+
+# Function to get latest FreeMind release from SourceForge
+get_latest_freemind() {
+    fallback_url=$1
+    url=$(curl -s "https://sourceforge.net/projects/freemind/files/freemind/" | grep -oP 'freemind/\d+\.\d+\.\d+/freemind_\d+\.\d+\.\d+-1_all\.deb' | head -n 1)
+    if [ -z "$url" ]; then
+        echo "$fallback_url"
+    else
+        echo "https://sourceforge.net/projects/freemind/files/$url"
+    fi
+}
+
+# Function to get latest yWriter release from Spacejock
+get_latest_ywriter() {
+    fallback_url=$1
+    url=$(curl -s "http://www.spacejock.com/yWriter6_Download.html" | grep -oP 'http://www\.spacejock\.com/files/yWriter\d+_Linux\.zip' | head -n 1)
+    if [ -z "$url" ]; then
+        echo "$fallback_url"
+    else
+        echo "$url"
+    fi
+}
+
 # Check if OS is 64-bit
 IS_64BIT=0
 if uname -m | grep -q aarch64; then
@@ -55,33 +93,43 @@ if whiptail --yesno "Is this a Raspberry Pi Zero (W or newer)?" 8 50; then
     IS_PI_ZERO=1
 fi
 
+# Fetch latest version URLs
+MANUSKRIPT_URL=$(get_latest_github_release "olivierkes/manuskript" "manuskript.*\.deb" "https://github.com/olivierkes/manuskript/releases/download/0.16.1/manuskript-0.16.1.deb")
+CHERRYTREE_URL=$(get_latest_github_release "giuspen/cherrytree" "cherrytree.*_all\.deb" "https://github.com/giuspen/cherrytree/releases/download/1.2.0/cherrytree_1.2.0-1_all.deb")
+TRELBY_URL=$(get_latest_github_release "trelby/trelby" "trelby.*_all\.deb" "https://github.com/trelby/trelby/releases/download/2.2/trelby_2.2_all.deb")
+XOURNALPP_URL=$(get_latest_github_release "xournalpp/xournalpp" "xournalpp.*Debian-bullseye\.deb" "https://github.com/xournalpp/xournalpp/releases/download/v1.2.3/xournalpp-1.2.3-Debian-bullseye.deb")
+FREEMIND_URL=$(get_latest_freemind "https://sourceforge.net/projects/freemind/files/freemind/0.9.0/freemind_0.9.0-1_all.deb")
+YWRITER_URL=$(get_latest_ywriter "http://www.spacejock.com/files/yWriter6_Linux.zip")
+OBSIDIAN_URL=$(get_latest_github_release "obsidianmd/obsidian-releases" "Obsidian.*\.AppImage" "https://github.com/obsidianmd/obsidian-releases/releases/download/v1.7.4/Obsidian-1.7.4.AppImage")
+
 # Software list (name, description, command, resource-heavy, 64-bit only)
 SOFTWARE_LIST=(
     "libreoffice-writer" "LibreOffice Writer - Word processor" "sudo apt-get install -y libreoffice-writer" "1" "0"
     "abiword" "AbiWord - Lightweight word processor" "sudo apt-get install -y abiword" "0" "0"
     "focuswriter" "FocusWriter - Distraction-free writing" "sudo apt-get install -y focuswriter" "0" "0"
-    "manuskript" "Manuskript - Writing organization" "sudo snap install manuskript || (wget https://github.com/olivierkes/manuskript/releases/download/0.16.1/manuskript-0.16.1.deb -O /tmp/manuskript.deb && sudo dpkg -i /tmp/manuskript.deb && sudo apt-get install -f -y)" "0" "0"
-    "cherrytree" "CherryTree - Note-taking" "sudo snap install cherrytree || (wget https://github.com/giuspen/cherrytree/releases/download/1.2.0/cherrytree_1.2.0-1_all.deb -O /tmp/cherrytree.deb && sudo dpkg -i /tmp/cherrytree.deb && sudo apt-get install -f -y)" "0" "0"
-    "trelby" "Trelby - Screenwriting" "wget https://github.com/trelby/trelby/releases/download/2.2/trelby_2.2_all.deb -O /tmp/trelby.deb && sudo dpkg -i /tmp/trelby.deb && sudo apt-get install -f -y" "0" "0"
+    "manuskript" "Manuskript - Writing organization" "sudo snap install manuskript || (wget $MANUSKRIPT_URL -O /tmp/manuskript.deb && sudo dpkg -i /tmp/manuskript.deb && sudo apt-get install -f -y)" "0" "0"
+    "cherrytree" "CherryTree - Note-taking" "sudo snap install cherrytree || (wget $CHERRYTREE_URL -O /tmp/cherrytree.deb && sudo dpkg -i /tmp/cherrytree.deb && sudo apt-get install -f -y)" "0" "0"
+    "trelby" "Trelby - Screenwriting" "wget $TRELBY_URL -O /tmp/trelby.deb && sudo dpkg -i /tmp/trelby.deb && sudo apt-get install -f -y" "0" "0"
     "gedit" "Gedit - Text editor" "sudo apt-get install -y gedit" "0" "0"
     "vim" "Vim - Text editor" "sudo apt-get install -y vim" "0" "0"
     "emacs" "Emacs - Text editor" "sudo apt-get install -y emacs" "0" "0"
     "zim" "Zim - Desktop wiki for notes" "sudo apt-get install -y zim" "0" "0"
     "calibre" "Calibre - E-book management" "sudo apt-get install -y calibre" "1" "0"
     "sigil" "Sigil - E-book editor" "flatpak install -y flathub com.sigil_ebook.Sigil" "1" "0"
-    "xournalpp" "Xournal - Handwritten notes" "sudo snap install xournalpp || (wget https://github.com/xournalpp/xournalpp/releases/download/v1.2.3/xournalpp-1.2.3-Debian-bullseye.deb -O /tmp/xournalpp.deb && sudo dpkg -i /tmp/xournalpp.deb && sudo apt-get install -f -y)" "0" "0"
+    "xournalpp" "Xournal - Handwritten notes" "sudo snap install xournalpp || (wget $XOURNALPP_URL -O /tmp/xournalpp.deb && sudo dpkg -i /tmp/xournalpp.deb && sudo apt-get install -f -y)" "0" "0"
     "okular" "Okular - Document viewer" "sudo apt-get install -y okular" "1" "0"
+    "ne" "NE - Lightweight text editor" "sudo apt install -y ne" "0" "0"
     "evince" "Evince - Document viewer" "sudo apt-get install -y evince" "0" "0"
     "dia" "Dia - Diagram creation" "sudo apt-get install -y dia" "1" "0"
-    "freemind" "FreeMind - Mind mapping" "sudo snap install freemind || (wget https://sourceforge.net/projects/freemind/files/freemind/0.9.0/freemind_0.9.0-1_all.deb -O /tmp/freemind.deb && sudo dpkg -i /tmp/freemind.deb && sudo apt-get install -f -y)" "1" "0"
-    "ywriter" "yWriter - Novel writing" "sudo apt-get install -y wine && wget http://www.spacejock.com/files/yWriter6_Linux.zip -O /tmp/ywriter.zip && unzip /tmp/ywriter.zip -d /opt/ywriter && wine /opt/ywriter/yWriter6.exe /regserver && lnmedia [Install] && ln -s /opt/ywriter/yWriter6.exe /usr/local/bin/ywriter" "1" "0"
+    "freemind" "FreeMind - Mind mapping" "sudo snap install freemind || (wget $FREEMIND_URL -O /tmp/freemind.deb && sudo dpkg -i /tmp/freemind.deb && sudo apt-get install -f -y)" "1" "0"
+    "ywriter" "yWriter - Novel writing" "sudo apt-get install -y wine && wget $YWRITER_URL -O /tmp/ywriter.zip && unzip /tmp/ywriter.zip -d /opt/ywriter && wine /opt/ywriter/yWriter6.exe /regserver && ln -s /opt/ywriter/yWriter6.exe /usr/local/bin/ywriter" "1" "0"
     "plume-creator" "Plume Creator - Writing organization" "sudo apt-get install -y plume-creator" "0" "0"
     "wordgrinder" "WordGrinder - Command-line word processor" "sudo apt-get install -y wordgrinder" "0" "0"
 )
 
 # Add Obsidian if 64-bit
 if [ $IS_64BIT -eq 1 ]; then
-    SOFTWARE_LIST+=("obsidian" "Obsidian - Note-taking and knowledge base" "wget https://github.com/obsidianmd/obsidian-releases/releases/download/v1.7.4/Obsidian-1.7.4.AppImage -O /opt/Obsidian.AppImage && chmod +x /opt/Obsidian.AppImage && ln -s /opt/Obsidian.AppImage /usr/local/bin/obsidian" "1" "1")
+    SOFTWARE_LIST+=("obsidian" "Obsidian - Note-taking and knowledge base" "wget $OBSIDIAN_URL -O /opt/Obsidian.AppImage && chmod +x /opt/Obsidian.AppImage && ln -s /opt/Obsidian.AppImage /usr/local/bin/obsidian" "1" "1")
 fi
 
 # Build whiptail checklist for software
