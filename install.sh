@@ -8,6 +8,7 @@
 # Sets up Wi-Fi hotspot, activates if no known network is found
 # Automatically checks for the latest software versions for select tools
 # Includes publishing software for Amazon KDP, web, and print
+# Prompts user for custom URL, fallback URL, or skip if version fetch fails
 
 # Exit on error
 set -e
@@ -17,6 +18,15 @@ if [ "$EUID" -ne 0 ]; then
     echo "This script must be run as root. Use sudo."
     exit 1
 fi
+
+# Check network connectivity
+check_network() {
+    if ! ping -c 1 -W 2 github.com &> /dev/null; then
+        echo "Network connectivity issue: Cannot reach github.com."
+        return 1
+    fi
+    return 0
+}
 
 # Check for required dependencies (whiptail, curl, jq)
 for cmd in whiptail curl jq; do
@@ -50,30 +60,91 @@ fi
 # Inform user about installation time
 whiptail --msgbox "Welcome to the Raspi-Writer installer!\n\nA full installation with all software may take 20-60 minutes, depending on your network speed and Raspberry Pi model (e.g., Pi Zero is slower). Ensure a stable internet connection." 12 60
 
+# Function to prompt user for URL, fallback, or skip
+prompt_for_url() {
+    software=$1
+    repo=$2
+    fallback_url=$3
+    CHOICE=$(whiptail --title "Failed to Fetch $software Version" --menu \
+        "Unable to fetch the latest version of $software from $repo. Choose an option:" 15 78 3 \
+        "Enter URL" "Provide a custom download URL" \
+        "Use Fallback" "Use the default fallback URL: $fallback_url" \
+        "Skip" "Skip installing $software" 3>&1 1>&2 2>&3)
+    if [ $? -ne 0 ]; then
+        echo "User cancelled prompt for $software. Skipping."
+        return 1
+    fi
+    case "$CHOICE" in
+        "Enter URL")
+            CUSTOM_URL=$(whiptail --inputbox "Enter the download URL for $software" 8 78 3>&1 1>&2 2>&3)
+            if [ $? -ne 0 ] || [ -z "$CUSTOM_URL" ]; then
+                echo "Invalid or no URL provided for $software. Skipping."
+                return 1
+            fi
+            # Basic URL validation
+            if ! echo "$CUSTOM_URL" | grep -qE '^https?://'; then
+                whiptail --msgbox "Invalid URL format for $software. Must start with http:// or https://. Skipping." 8 60
+                return 1
+            fi
+            echo "$CUSTOM_URL"
+            return 0
+            ;;
+        "Use Fallback")
+            echo "$fallback_url"
+            return 0
+            ;;
+        "Skip")
+            echo ""
+            return 1
+            ;;
+    esac
+}
+
 # Function to get latest GitHub release URL with retry logic
 get_latest_github_release() {
     repo=$1
     asset_pattern=$2
     fallback_url=$3
+    software_name=$(echo "$repo" | cut -d'/' -f2)
     # Escape dots correctly for jq
     escaped_pattern=$(echo "$asset_pattern" | sed 's/\./[.]/g')
+    # Check network connectivity
+    if ! check_network; then
+        echo "Network issue detected for $software_name."
+        prompt_for_url "$software_name" "$repo" "$fallback_url"
+        return $?
+    fi
     # Retry curl up to 3 times with 5-second delay
     for attempt in {1..3}; do
-        url=$(curl -s --connect-timeout 10 --retry 2 --retry-delay 5 "https://api.github.com/repos/$repo/releases/latest" | jq -r ".assets[] | select(.name | test(\"$escaped_pattern\")) | .browser_download_url" | head -n 1)
-        if [ -n "$url" ]; then
-            echo "$url"
-            return 0
+        response=$(curl -s --connect-timeout 10 --retry 2 --retry-delay 5 "https://api.github.com/repos/$repo/releases/latest")
+        if [ -z "$response" ]; then
+            echo "Attempt $attempt failed for $software_name: Empty response. Retrying..."
+            sleep 5
+            continue
         fi
-        echo "Attempt $attempt failed for $repo. Retrying..."
-        sleep 5
+        url=$(echo "$response" | jq -r ".assets[] | select(.name | test(\"$escaped_pattern\")) | .browser_download_url" 2>/dev/null | head -n 1)
+        if [ $? -ne 0 ] || [ -z "$url" ]; then
+            echo "Attempt $attempt failed for $software_name: JQ parsing error or no matching assets. Retrying..."
+            sleep 5
+            continue
+        fi
+        echo "$url"
+        return 0
     done
-    echo "Failed to fetch latest release for $repo. Using fallback URL."
-    echo "$fallback_url"
+    echo "Failed to fetch latest release for $software_name."
+    prompt_for_url "$software_name" "$repo" "$fallback_url"
+    return $?
 }
 
 # Function to get latest FreeMind release from SourceForge
 get_latest_freemind() {
     fallback_url=$1
+    # Check network connectivity
+    if ! check_network; then
+        echo "Network issue detected for FreeMind."
+        prompt_for_url "FreeMind" "SourceForge" "$fallback_url"
+        return $?
+    fi
     # Retry curl up to 3 times
     for attempt in {1..3}; do
         url=$(curl -s --connect-timeout 10 --retry 2 --retry-delay 5 "https://sourceforge.net/projects/freemind/files/freemind/" | grep -oP 'freemind/\d+\.\d+\.\d+/freemind_\d+\.\d+\.\d+-1_all\.deb' | head -n 1)
@@ -84,16 +155,23 @@ get_latest_freemind() {
         echo "Attempt $attempt failed for FreeMind. Retrying..."
         sleep 5
     done
-    echo "Failed to fetch FreeMind release. Using fallback URL."
-    echo "$fallback_url"
+    echo "Failed to fetch FreeMind release."
+    prompt_for_url "FreeMind" "SourceForge" "$fallback_url"
+    return $?
 }
 
 # Function to get latest yWriter release from Spacejock
 get_latest_ywriter() {
     fallback_url=$1
+    # Check network connectivity
+    if ! check_network; then
+        echo "Network issue detected for yWriter."
+        prompt_for_url "yWriter" "Spacejock" "$fallback_url"
+        return $?
+    fi
     # Retry curl up to 3 times
     for attempt in {1..3}; do
-        url=$(curl -s --connect-timeout 10 --retry 2 --retry-delay 5 "http://www.spacejock.com/yWriter6_Download.html" | grep -oP 'http://www\.spacejock\.com/files/yWriter\d+_Linux\.zip' | head -n 1)
+        url=$(curl -s --connect-timeout 10 --retry 2 --retry-delay 5 "http://www.spacejock.com/yWriter7_Download.html" | grep -oP 'http://www\.spacejock\.com/files/yWriter\d+_Linux\.zip' | head -n 1)
         if [ -n "$url" ]; then
             echo "$url"
             return 0
@@ -101,8 +179,9 @@ get_latest_ywriter() {
         echo "Attempt $attempt failed for yWriter. Retrying..."
         sleep 5
     done
-    echo "Failed to fetch yWriter release. Using fallback URL."
-    echo "$fallback_url"
+    echo "Failed to fetch yWriter release."
+    prompt_for_url "yWriter" "Spacejock" "$fallback_url"
+    return $?
 }
 
 # Check if OS is 64-bit
@@ -117,13 +196,13 @@ if whiptail --yesno "Is this a Raspberry Pi Zero (W or newer)?" 8 50; then
     IS_PI_ZERO=1
 fi
 
-# Fetch latest version URLs
+# Fetch latest version URLs (updated fallbacks to latest known versions as of July 2025)
 MANUSKRIPT_URL=$(get_latest_github_release "olivierkes/manuskript" "manuskript.*.deb" "https://github.com/olivierkes/manuskript/releases/download/0.16.1/manuskript-0.16.1.deb")
-CHERRYTREE_URL=$(get_latest_github_release "giuspen/cherrytree" "cherrytree.*_all.deb" "https://github.com/giuspen/cherrytree/releases/download/1.2.0/cherrytree_1.2.0-1_all.deb")
+CHERRYTREE_URL=$(get_latest_github_release "giuspen/cherrytree" "cherrytree.*_all.deb" "https://github.com/giuspen/cherrytree/releases/download/v1.2.0/cherrytree_1.2.0-1_all.deb")
 TRELBY_URL=$(get_latest_github_release "trelby/trelby" "trelby.*_all.deb" "https://github.com/trelby/trelby/releases/download/2.2/trelby_2.2_all.deb")
 XOURNALPP_URL=$(get_latest_github_release "xournalpp/xournalpp" "xournalpp.*Debian-bullseye.deb" "https://github.com/xournalpp/xournalpp/releases/download/v1.2.3/xournalpp-1.2.3-Debian-bullseye.deb")
-FREEMIND_URL=$(get_latest_freemind "https://sourceforge.net/projects/freemind/files/freemind/0.9.0/freemind_0.9.0-1_all.deb")
-YWRITER_URL=$(get_latest_ywriter "http://www.spacejock.com/yWriter6_Linux.zip")
+FREEMIND_URL=$(get_latest_freemind "https://sourceforge.net/projects/freemind/files/freemind/1.0.1/freemind_1.0.1-1_all.deb")
+YWRITER_URL=$(get_latest_ywriter "http://www.spacejock.com/files/yWriter7_Linux.zip")
 OBSIDIAN_URL=$(get_latest_github_release "obsidianmd/obsidian-releases" "Obsidian.*.AppImage" "https://github.com/obsidianmd/obsidian-releases/releases/download/v1.7.4/Obsidian-1.7.4.AppImage")
 SCRIVENER_URL=$(get_latest_github_release "LiteratureAndLatte/scrivener" "Scrivener.*.deb" "https://www.literatureandlatte.com/files/scrivener-3.3.6-amd64.deb")
 
@@ -147,7 +226,7 @@ SOFTWARE_LIST=(
     "evince" "Evince - Document viewer" "sudo apt-get install -y evince" "0" "0"
     "dia" "Dia - Diagram creation" "sudo apt-get install -y dia" "1" "0"
     "freemind" "FreeMind - Mind mapping" "sudo snap install freemind || (wget $FREEMIND_URL -O /tmp/freemind.deb && sudo dpkg -i /tmp/freemind.deb && sudo apt-get install -f -y)" "1" "0"
-    "ywriter" "yWriter - Novel writing" "sudo apt-get install -y wine && wget $YWRITER_URL -O /tmp/ywriter.zip && unzip /tmp/ywriter.zip -d /opt/ywriter && wine /opt/ywriter/yWriter6.exe /regserver && ln -s /opt/ywriter/yWriter6.exe /usr/local/bin/ywriter" "1" "0"
+    "ywriter" "yWriter - Novel writing" "sudo apt-get install -y wine && wget $YWRITER_URL -O /tmp/ywriter.zip && unzip /tmp/ywriter.zip -d /opt/ywriter && wine /opt/ywriter/yWriter7.exe /regserver && ln -s /opt/ywriter/yWriter7.exe /usr/local/bin/ywriter" "1" "0"
     "plume-creator" "Plume Creator - Writing organization" "sudo apt-get install -y plume-creator" "0" "0"
     "wordgrinder" "WordGrinder - Command-line word processor" "sudo apt-get install -y wordgrinder" "0" "0"
     "kindle-create" "Kindle Create - KDP formatting tool" "sudo apt-get install -y wine && wget https://d2b7dn6lvfj4po.cloudfront.net/KindleCreate_1.83.3.0.exe -O /tmp/kindle-create.exe && wine /tmp/kindle-create.exe" "1" "0"
@@ -197,9 +276,16 @@ SELECTED_SOFTWARE=$(echo $SELECTED_SOFTWARE | tr -d '"')
 for SOFTWARE in $SELECTED_SOFTWARE; do
     for ((i=0; i<${#SOFTWARE_LIST[@]}; i+=5)); do
         if [ "${SOFTWARE_LIST[i]}" = "$SOFTWARE" ]; then
+            # Replace URL placeholders with actual URLs
+            CMD=$(eval "echo \"${SOFTWARE_LIST[i+2]}\"")
+            # Skip if command contains an empty URL (user chose to skip)
+            if echo "$CMD" | grep -q '\$'; then
+                echo "Skipping $SOFTWARE due to missing URL."
+                continue
+            fi
             echo "Installing ${SOFTWARE_LIST[i]}..."
             # Execute the installation command
-            eval "${SOFTWARE_LIST[i+2]}" > /tmp/install_${SOFTWARE}.log 2>&1 || {
+            eval "$CMD" > /tmp/install_${SOFTWARE}.log 2>&1 || {
                 whiptail --msgbox "Failed to install ${SOFTWARE_LIST[i]}. Check /tmp/install_${SOFTWARE}.log for details." 8 60
             }
             echo "${SOFTWARE_LIST[i]} installation completed."
