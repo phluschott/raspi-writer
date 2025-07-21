@@ -41,14 +41,8 @@ if ! command -v flatpak &> /dev/null; then
     echo "Installing flatpak..."
     apt-get update
     apt-get install -y flatpak
-    flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-fi
-
-# Check for bottles and install via Flatpak if missing
-if ! flatpak list | grep -q com.usebottles.bottles; then
-    echo "Installing bottles via Flatpak..."
-    flatpak install -y flathub com.usebottles.bottles || {
-        echo "Failed to install bottles. Check Flatpak configuration and internet connection."
+    flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo || {
+        echo "Failed to add Flathub remote. Check internet connection."
         exit 1
     }
 fi
@@ -136,7 +130,7 @@ SOFTWARE_LIST=(
     "ywriter" "yWriter - Novel writing" "sudo apt-get install -y wine && wget $YWRITER_URL -O /tmp/ywriter.zip && unzip /tmp/ywriter.zip -d /opt/ywriter && wine /opt/ywriter/yWriter6.exe /regserver && ln -s /opt/ywriter/yWriter6.exe /usr/local/bin/ywriter" "1" "0"
     "plume-creator" "Plume Creator - Writing organization" "sudo apt-get install -y plume-creator" "0" "0"
     "wordgrinder" "WordGrinder - Command-line word processor" "sudo apt-get install -y wordgrinder" "0" "0"
-    "kindle-create" "Kindle Create - KDP formatting tool" "sudo apt-get install -y wine && wget https://d2b7dn6lvfj4po.cloudfront.net/KindleCreate_1.83.3.0.exe -O /tmp/kindle-create.exe && flatpak run com.usebottles.bottles --create KindleCreate --exec /tmp/kindle-create.exe" "1" "0"
+    "kindle-create" "Kindle Create - KDP formatting tool" "sudo apt-get install -y wine && wget https://d2b7dn6lvfj4po.cloudfront.net/KindleCreate_1.83.3.0.exe -O /tmp/kindle-create.exe && wine /tmp/kindle-create.exe" "1" "0"
     "scrivener" "Scrivener - Writing and publishing tool" "wget $SCRIVENER_URL -O /tmp/scrivener.deb && sudo dpkg -i /tmp/scrivener.deb && sudo apt-get install -f -y" "1" "0"
     "pandoc" "Pandoc - Document converter for EPUB/PDF" "sudo apt-get install -y pandoc" "0" "0"
     "texlive" "TeX Live - Typesetting for print books" "sudo apt-get install -y texlive-full" "1" "0"
