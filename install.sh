@@ -5,7 +5,7 @@
 # Uses whiptail for user interface, inspired by KM4ACK's 73Linux script
 # Checks for 64-bit OS to include Obsidian.md
 # Supports HDMI displays by default and GPIO displays (3.5" to 1080p)
-# Sets up Wi-Fi hotspot if no known network is found
+# Sets up Wi-Fi hotspot, activates if no known network is found
 
 # Exit on error
 set -e
@@ -22,6 +22,26 @@ if ! command -v whiptail &> /dev/null; then
     apt-get update
     apt-get install -y whiptail
 fi
+
+# Check for snapd and install if missing
+if ! command -v snap &> /dev/null; then
+    echo "Installing snapd..."
+    apt-get update
+    apt-get install -y snapd
+    systemctl enable --now snapd.socket
+    ln -s /var/lib/snapd/snap /snap
+fi
+
+# Check for flatpak and install if missing
+if ! command -v flatpak &> /dev/null; then
+    echo "Installing flatpak..."
+    apt-get update
+    apt-get install -y flatpak
+    flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+fi
+
+# Inform user about installation time
+whiptail --msgbox "Welcome to the Raspi-Writer installer!\n\nA full installation with all software may take 20-60 minutes, depending on your network speed and Raspberry Pi model (e.g., Pi Zero is slower). Ensure a stable internet connection." 12 60
 
 # Check if OS is 64-bit
 IS_64BIT=0
@@ -40,28 +60,28 @@ SOFTWARE_LIST=(
     "libreoffice-writer" "LibreOffice Writer - Word processor" "sudo apt-get install -y libreoffice-writer" "1" "0"
     "abiword" "AbiWord - Lightweight word processor" "sudo apt-get install -y abiword" "0" "0"
     "focuswriter" "FocusWriter - Distraction-free writing" "sudo apt-get install -y focuswriter" "0" "0"
-    "manuskript" "Manuskript - Writing organization" "sudo snap install manuskript" "0" "0"
-    "cherrytree" "CherryTree - Note-taking" "sudo snap install cherrytree" "0" "0"
-    "trelby" "Trelby - Screenwriting" "wget http://www.trelby.org/files/release/2.2/trelby_2.2_all.deb -O /tmp/trelby.deb && sudo dpkg -i /tmp/trelby.deb && sudo apt-get install -f -y" "0" "0"
+    "manuskript" "Manuskript - Writing organization" "sudo snap install manuskript || (wget https://github.com/olivierkes/manuskript/releases/download/0.16.1/manuskript-0.16.1.deb -O /tmp/manuskript.deb && sudo dpkg -i /tmp/manuskript.deb && sudo apt-get install -f -y)" "0" "0"
+    "cherrytree" "CherryTree - Note-taking" "sudo snap install cherrytree || (wget https://github.com/giuspen/cherrytree/releases/download/1.2.0/cherrytree_1.2.0-1_all.deb -O /tmp/cherrytree.deb && sudo dpkg -i /tmp/cherrytree.deb && sudo apt-get install -f -y)" "0" "0"
+    "trelby" "Trelby - Screenwriting" "wget https://github.com/trelby/trelby/releases/download/2.2/trelby_2.2_all.deb -O /tmp/trelby.deb && sudo dpkg -i /tmp/trelby.deb && sudo apt-get install -f -y" "0" "0"
     "gedit" "Gedit - Text editor" "sudo apt-get install -y gedit" "0" "0"
     "vim" "Vim - Text editor" "sudo apt-get install -y vim" "0" "0"
     "emacs" "Emacs - Text editor" "sudo apt-get install -y emacs" "0" "0"
     "zim" "Zim - Desktop wiki for notes" "sudo apt-get install -y zim" "0" "0"
     "calibre" "Calibre - E-book management" "sudo apt-get install -y calibre" "1" "0"
     "sigil" "Sigil - E-book editor" "flatpak install -y flathub com.sigil_ebook.Sigil" "1" "0"
-    "xournalpp" "Xournal - Handwritten notes" "sudo snap install xournalpp" "0" "0"
+    "xournalpp" "Xournal - Handwritten notes" "sudo snap install xournalpp || (wget https://github.com/xournalpp/xournalpp/releases/download/v1.2.3/xournalpp-1.2.3-Debian-bullseye.deb -O /tmp/xournalpp.deb && sudo dpkg -i /tmp/xournalpp.deb && sudo apt-get install -f -y)" "0" "0"
     "okular" "Okular - Document viewer" "sudo apt-get install -y okular" "1" "0"
     "evince" "Evince - Document viewer" "sudo apt-get install -y evince" "0" "0"
     "dia" "Dia - Diagram creation" "sudo apt-get install -y dia" "1" "0"
-    "freemind" "FreeMind - Mind mapping" "sudo snap install freemind" "1" "0"
-    "ywriter" "yWriter - Novel writing" "sudo apt-get install -y mono-complete && wget http://www.spacejock.com/files/yWriter5_Linux.zip -O /tmp/ywriter.zip && unzip /tmp/ywriter.zip -d /opt/ywriter && ln -s /opt/ywriter/yWriter5 /usr/local/bin/ywriter" "1" "0"
+    "freemind" "FreeMind - Mind mapping" "sudo snap install freemind || (wget https://sourceforge.net/projects/freemind/files/freemind/0.9.0/freemind_0.9.0-1_all.deb -O /tmp/freemind.deb && sudo dpkg -i /tmp/freemind.deb && sudo apt-get install -f -y)" "1" "0"
+    "ywriter" "yWriter - Novel writing" "sudo apt-get install -y wine && wget http://www.spacejock.com/files/yWriter6_Linux.zip -O /tmp/ywriter.zip && unzip /tmp/ywriter.zip -d /opt/ywriter && wine /opt/ywriter/yWriter6.exe /regserver && lnmedia [Install] && ln -s /opt/ywriter/yWriter6.exe /usr/local/bin/ywriter" "1" "0"
     "plume-creator" "Plume Creator - Writing organization" "sudo apt-get install -y plume-creator" "0" "0"
     "wordgrinder" "WordGrinder - Command-line word processor" "sudo apt-get install -y wordgrinder" "0" "0"
 )
 
 # Add Obsidian if 64-bit
 if [ $IS_64BIT -eq 1 ]; then
-    SOFTWARE_LIST+=("obsidian" "Obsidian - Note-taking and knowledge base" "wget https://github.com/obsidianmd/obsidian-releases/releases/latest/download/Obsidian.AppImage -O /opt/Obsidian.AppImage && chmod +x /opt/Obsidian.AppImage && ln -s /opt/Obsidian.AppImage /usr/local/bin/obsidian" "1" "1")
+    SOFTWARE_LIST+=("obsidian" "Obsidian - Note-taking and knowledge base" "wget https://github.com/obsidianmd/obsidian-releases/releases/download/v1.7.4/Obsidian-1.7.4.AppImage -O /opt/Obsidian.AppImage && chmod +x /opt/Obsidian.AppImage && ln -s /opt/Obsidian.AppImage /usr/local/bin/obsidian" "1" "1")
 fi
 
 # Build whiptail checklist for software
@@ -161,34 +181,30 @@ if [[ "$SELECTED_DISPLAY" == "waveshare35a" || "$SELECTED_DISPLAY" == "ili9341" 
     whiptail --msgbox "Small display detected. GUI apps may have scaling issues. Consider terminal-based apps like Vim or WordGrinder." 10 60
 fi
 
-# Check for known Wi-Fi networks
-if nmcli -t -f SSID dev wifi | grep -q .; then
-    whiptail --msgbox "Connected to Wi-Fi. Skipping hotspot setup." 8 50
-else
-    # Wi-Fi hotspot setup
-    if whiptail --yesno "No known Wi-Fi networks found. Set up a Wi-Fi hotspot?" 8 50; then
-        SSID=$(whiptail --inputbox "Enter Wi-Fi Hotspot SSID" 8 50 "RPi-Writers-Hotspot" 3>&1 1>&2 2>&3)
-        if [ $? -ne 0 ]; then SSID="RPi-Writers-Hotspot"; fi
+# Wi-Fi hotspot setup (always offer, activate only if no known networks)
+if whiptail --yesno "Set up a Wi-Fi hotspot? (Will activate only if no known Wi-Fi networks are found)" 8 60; then
+    SSID=$(whiptail --inputbox "Enter Wi-Fi Hotspot SSID" 8 50 "RPi-Writers-Hotspot" 3>&1 1>&2 2>&3)
+    if [ $? -ne 0 ]; then SSID="RPi-Writers-Hotspot"; fi
 
-        PASSWORD=$(whiptail --passwordbox "Enter Wi-Fi Hotspot Password (8+ characters)" 8 50 3>&1 1>&2 2>&3)
-        if [ $? -ne 0 ] || [ ${#PASSWORD} -lt 8 ]; then
-            whiptail --msgbox "Invalid password. Hotspot setup cancelled." 8 50
-            exit 1
-        fi
+    PASSWORD=$(whiptail --passwordbox "Enter Wi-Fi Hotspot Password (8+ characters)" 8 50 3>&1 1>&2 2>&3)
+    if [ $? -ne 0 ] || [ ${#PASSWORD} -lt 8 ]; then
+        whiptail --msgbox "Invalid password. Hotspot setup cancelled." 8 50
+        exit 1
+    fi
 
-        AUTH_TYPE=$(whiptail --menu "Select Wi-Fi Authentication Type" 12 50 4 \
-            "WPA-PSK" "WPA2 Personal" \
-            "WPA3-PSK" "WPA3 Personal" \
-            "OPEN" "No password" \
-            "WEP" "WEP (less secure)" 3>&1 1>&2 2>&3)
-        if [ $? -ne 0 ]; then AUTH_TYPE="WPA-PSK"; fi
+    AUTH_TYPE=$(whiptail --menu "Select Wi-Fi Authentication Type" 12 50 4 \
+        "WPA-PSK" "WPA2 Personal" \
+        "WPA3-PSK" "WPA3 Personal" \
+        "OPEN" "No password" \
+        "WEP" "WEP (less secure)" 3>&1 1>&2 2>&3)
+    if [ $? -ne 0 ]; then AUTH_TYPE="WPA-PSK"; fi
 
-        # Install hostapd and dnsmasq
-        apt-get update
-        apt-get install -y hostapd dnsmasq
+    # Install hostapd and dnsmasq
+    apt-get update
+    apt-get install -y hostapd dnsmasq
 
-        # Configure hostapd
-        cat > /etc/hostapd/hostapd.conf <<EOF
+    # Configure hostapd
+    cat > /etc/hostapd/hostapd.conf <<EOF
 interface=wlan0
 driver=nl80211
 ssid=$SSID
@@ -200,33 +216,33 @@ auth_algs=1
 ignore_broadcast_ssid=0
 EOF
 
-        case $AUTH_TYPE in
-            "WPA-PSK"|"WPA3-PSK")
-                echo "wpa=2" >> /etc/hostapd/hostapd.conf
-                echo "wpa_passphrase=$PASSWORD" >> /etc/hostapd/hostapd.conf
-                if [ "$AUTH_TYPE" = "WPA3-PSK" ]; then
-                    echo "wpa_key_mgmt=SAE" >> /etc/hostapd/hostapd.conf
-                    echo "ieee80211w=2" >> /etc/hostapd/hostapd.conf
-                else
-                    echo "wpa_key_mgmt=WPA-PSK" >> /etc/hostapd/hostapd.conf
-                fi
-                ;;
-            "WEP")
-                echo "wep_default_key=0" >> /etc/hostapd/hostapd.conf
-                echo "wep_key0=$PASSWORD" >> /etc/hostapd/hostapd.conf
-                ;;
-            "OPEN")
-                ;;
-        esac
+    case $AUTH_TYPE in
+        "WPA-PSK"|"WPA3-PSK")
+            echo "wpa=2" >> /etc/hostapd/hostapd.conf
+            echo "wpa_passphrase=$PASSWORD" >> /etc/hostapd/hostapd.conf
+            if [ "$AUTH_TYPE" = "WPA3-PSK" ]; then
+                echo "wpa_key_mgmt=SAE" >> /etc/hostapd/hostapd.conf
+                echo "ieee80211w=2" >> /etc/hostapd/hostapd.conf
+            else
+                echo "wpa_key_mgmt=WPA-PSK" >> /etc/hostapd/hostapd.conf
+            fi
+            ;;
+        "WEP")
+            echo "wep_default_key=0" >> /etc/hostapd/hostapd.conf
+            echo "wep_key0=$PASSWORD" >> /etc/hostapd/hostapd.conf
+            ;;
+        "OPEN")
+            ;;
+    esac
 
-        # Configure dnsmasq
-        cat > /etc/dnsmasq.conf <<EOF
+    # Configure dnsmasq
+    cat > /etc/dnsmasq.conf <<EOF
 interface=wlan0
 dhcp-range=192.168.4.2,192.168.4.20,255.255.255.0,24h
 EOF
 
-        # Configure network
-        cat > /etc/systemd/network/wlan0.network <<EOF
+    # Configure network
+    cat > /etc/systemd/network/wlan0.network <<EOF
 [Match]
 Name=wlan0
 [Network]
@@ -234,17 +250,29 @@ Address=192.168.4.1/24
 DHCPServer=yes
 EOF
 
-        # Enable services
-        systemctl unmask hostapd
-        systemctl enable hostapd
-        systemctl enable dnsmasq
+    # Create script to enable hotspot only if no known Wi-Fi networks
+    cat > /etc/network/if-pre-up.d/check_wifi_hotspot <<EOF
+#!/bin/sh
+if [ "\$IFACE" = "wlan0" ]; then
+    if ! nmcli -t -f SSID dev wifi | grep -q .; then
         systemctl start hostapd
         systemctl start dnsmasq
-
-        whiptail --msgbox "Wi-Fi hotspot configured (SSID: $SSID). Reboot to activate." 8 50
     else
-        echo "Hotspot setup skipped."
+        systemctl stop hostapd
+        systemctl stop dnsmasq
     fi
+fi
+EOF
+    chmod +x /etc/network/if-pre-up.d/check_wifi_hotspot
+
+    # Enable services
+    systemctl unmask hostapd
+    systemctl enable hostapd
+    systemctl enable dnsmasq
+
+    whiptail --msgbox "Wi-Fi hotspot configured (SSID: $SSID). Activates on boot if no known Wi-Fi networks are found. Reboot to apply." 8 60
+else
+    echo "Hotspot setup skipped."
 fi
 
 # Final message
