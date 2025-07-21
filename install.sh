@@ -50,39 +50,59 @@ fi
 # Inform user about installation time
 whiptail --msgbox "Welcome to the Raspi-Writer installer!\n\nA full installation with all software may take 20-60 minutes, depending on your network speed and Raspberry Pi model (e.g., Pi Zero is slower). Ensure a stable internet connection." 12 60
 
-# Function to get latest GitHub release URL
+# Function to get latest GitHub release URL with retry logic
 get_latest_github_release() {
     repo=$1
     asset_pattern=$2
     fallback_url=$3
-    url=$(curl -s "https://api.github.com/repos/$repo/releases/latest" | jq -r ".assets[] | select(.name | test(\"$asset_pattern\")) | .browser_download_url" | head -n 1)
-    if [ -z "$url" ]; then
-        echo "$fallback_url"
-    else
-        echo "$url"
-    fi
+    # Escape dots correctly for jq
+    escaped_pattern=$(echo "$asset_pattern" | sed 's/\./[.]/g')
+    # Retry curl up to 3 times with 5-second delay
+    for attempt in {1..3}; do
+        url=$(curl -s --connect-timeout 10 --retry 2 --retry-delay 5 "https://api.github.com/repos/$repo/releases/latest" | jq -r ".assets[] | select(.name | test(\"$escaped_pattern\")) | .browser_download_url" | head -n 1)
+        if [ -n "$url" ]; then
+            echo "$url"
+            return 0
+        fi
+        echo "Attempt $attempt failed for $repo. Retrying..."
+        sleep 5
+    done
+    echo "Failed to fetch latest release for $repo. Using fallback URL."
+    echo "$fallback_url"
 }
 
 # Function to get latest FreeMind release from SourceForge
 get_latest_freemind() {
     fallback_url=$1
-    url=$(curl -s "https://sourceforge.net/projects/freemind/files/freemind/" | grep -oP 'freemind/\d+\.\d+\.\d+/freemind_\d+\.\d+\.\d+-1_all\.deb' | head -n 1)
-    if [ -z "$url" ]; then
-        echo "$fallback_url"
-    else
-        echo "https://sourceforge.net/projects/freemind/files/$url"
-    fi
+    # Retry curl up to 3 times
+    for attempt in {1..3}; do
+        url=$(curl -s --connect-timeout 10 --retry 2 --retry-delay 5 "https://sourceforge.net/projects/freemind/files/freemind/" | grep -oP 'freemind/\d+\.\d+\.\d+/freemind_\d+\.\d+\.\d+-1_all\.deb' | head -n 1)
+        if [ -n "$url" ]; then
+            echo "https://sourceforge.net/projects/freemind/files/$url"
+            return 0
+        fi
+        echo "Attempt $attempt failed for FreeMind. Retrying..."
+        sleep 5
+    done
+    echo "Failed to fetch FreeMind release. Using fallback URL."
+    echo "$fallback_url"
 }
 
 # Function to get latest yWriter release from Spacejock
 get_latest_ywriter() {
     fallback_url=$1
-    url=$(curl -s "http://www.spacejock.com/yWriter6_Download.html" | grep -oP 'http://www\.spacejock\.com/files/yWriter\d+_Linux\.zip' | head -n 1)
-    if [ -z "$url" ]; then
-        echo "$fallback_url"
-    else
-        echo "$url"
-    fi
+    # Retry curl up to 3 times
+    for attempt in {1..3}; do
+        url=$(curl -s --connect-timeout 10 --retry 2 --retry-delay 5 "http://www.spacejock.com/yWriter6_Download.html" | grep -oP 'http://www\.spacejock\.com/files/yWriter\d+_Linux\.zip' | head -n 1)
+        if [ -n "$url" ]; then
+            echo "$url"
+            return 0
+        fi
+        echo "Attempt $attempt failed for yWriter. Retrying..."
+        sleep 5
+    done
+    echo "Failed to fetch yWriter release. Using fallback URL."
+    echo "$fallback_url"
 }
 
 # Check if OS is 64-bit
@@ -98,14 +118,14 @@ if whiptail --yesno "Is this a Raspberry Pi Zero (W or newer)?" 8 50; then
 fi
 
 # Fetch latest version URLs
-MANUSKRIPT_URL=$(get_latest_github_release "olivierkes/manuskript" "manuskript.*\.deb" "https://github.com/olivierkes/manuskript/releases/download/0.16.1/manuskript-0.16.1.deb")
-CHERRYTREE_URL=$(get_latest_github_release "giuspen/cherrytree" "cherrytree.*_all\.deb" "https://github.com/giuspen/cherrytree/releases/download/1.2.0/cherrytree_1.2.0-1_all.deb")
-TRELBY_URL=$(get_latest_github_release "trelby/trelby" "trelby.*_all\.deb" "https://github.com/trelby/trelby/releases/download/2.2/trelby_2.2_all.deb")
-XOURNALPP_URL=$(get_latest_github_release "xournalpp/xournalpp" "xournalpp.*Debian-bullseye\.deb" "https://github.com/xournalpp/xournalpp/releases/download/v1.2.3/xournalpp-1.2.3-Debian-bullseye.deb")
+MANUSKRIPT_URL=$(get_latest_github_release "olivierkes/manuskript" "manuskript.*.deb" "https://github.com/olivierkes/manuskript/releases/download/0.16.1/manuskript-0.16.1.deb")
+CHERRYTREE_URL=$(get_latest_github_release "giuspen/cherrytree" "cherrytree.*_all.deb" "https://github.com/giuspen/cherrytree/releases/download/1.2.0/cherrytree_1.2.0-1_all.deb")
+TRELBY_URL=$(get_latest_github_release "trelby/trelby" "trelby.*_all.deb" "https://github.com/trelby/trelby/releases/download/2.2/trelby_2.2_all.deb")
+XOURNALPP_URL=$(get_latest_github_release "xournalpp/xournalpp" "xournalpp.*Debian-bullseye.deb" "https://github.com/xournalpp/xournalpp/releases/download/v1.2.3/xournalpp-1.2.3-Debian-bullseye.deb")
 FREEMIND_URL=$(get_latest_freemind "https://sourceforge.net/projects/freemind/files/freemind/0.9.0/freemind_0.9.0-1_all.deb")
 YWRITER_URL=$(get_latest_ywriter "http://www.spacejock.com/yWriter6_Linux.zip")
-OBSIDIAN_URL=$(get_latest_github_release "obsidianmd/obsidian-releases" "Obsidian.*\.AppImage" "https://github.com/obsidianmd/obsidian-releases/releases/download/v1.7.4/Obsidian-1.7.4.AppImage")
-SCRIVENER_URL=$(get_latest_github_release "LiteratureAndLatte/scrivener" "Scrivener.*\.deb" "https://www.literatureandlatte.com/files/scrivener-3.3.6-amd64.deb")
+OBSIDIAN_URL=$(get_latest_github_release "obsidianmd/obsidian-releases" "Obsidian.*.AppImage" "https://github.com/obsidianmd/obsidian-releases/releases/download/v1.7.4/Obsidian-1.7.4.AppImage")
+SCRIVENER_URL=$(get_latest_github_release "LiteratureAndLatte/scrivener" "Scrivener.*.deb" "https://www.literatureandlatte.com/files/scrivener-3.3.6-amd64.deb")
 
 # Software list (name, description, command, resource-heavy, 64-bit only)
 SOFTWARE_LIST=(
