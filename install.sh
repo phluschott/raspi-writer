@@ -7,7 +7,6 @@
 # Supports HDMI displays by default and GPIO displays (3.5" to 1080p)
 # Sets up Wi-Fi hotspot, activates if no known network is found
 # Automatically checks for the latest software versions for select tools
-# Includes publishing software for Amazon KDP, web, and print
 # Prompts user for custom URL, fallback URL, or skip if version fetch fails
 
 # Exit on error
@@ -197,42 +196,31 @@ if whiptail --yesno "Is this a Raspberry Pi Zero (W or newer)?" 8 50; then
 fi
 
 # Fetch latest version URLs (updated fallbacks to latest known versions as of July 2025)
-MANUSKRIPT_URL=$(get_latest_github_release "olivierkes/manuskript" "manuskript.*.deb" "https://github.com/olivierkes/manuskript/releases/download/0.16.1/manuskript-0.16.1.deb")
-CHERRYTREE_URL=$(get_latest_github_release "giuspen/cherrytree" "cherrytree.*_all.deb" "https://github.com/giuspen/cherrytree/releases/download/v1.2.0/cherrytree_1.2.0-1_all.deb")
-TRELBY_URL=$(get_latest_github_release "trelby/trelby" "trelby.*_all.deb" "https://github.com/trelby/trelby/releases/download/2.2/trelby_2.2_all.deb")
-XOURNALPP_URL=$(get_latest_github_release "xournalpp/xournalpp" "xournalpp.*Debian-bullseye.deb" "https://github.com/xournalpp/xournalpp/releases/download/v1.2.3/xournalpp-1.2.3-Debian-bullseye.deb")
 FREEMIND_URL=$(get_latest_freemind "https://sourceforge.net/projects/freemind/files/freemind/1.0.1/freemind_1.0.1-1_all.deb")
 YWRITER_URL=$(get_latest_ywriter "http://www.spacejock.com/files/yWriter7_Linux.zip")
-OBSIDIAN_URL=$(get_latest_github_release "obsidianmd/obsidian-releases" "Obsidian.*.AppImage" "https://github.com/obsidianmd/obsidian-releases/releases/download/v1.7.4/Obsidian-1.7.4.AppImage")
 SCRIVENER_URL=$(get_latest_github_release "LiteratureAndLatte/scrivener" "Scrivener.*.deb" "https://www.literatureandlatte.com/files/scrivener-3.3.6-amd64.deb")
+OBSIDIAN_URL=$(get_latest_github_release "obsidianmd/obsidian-releases" "Obsidian.*.AppImage" "https://github.com/obsidianmd/obsidian-releases/releases/download/v1.7.4/Obsidian-1.7.4.AppImage")
 
 # Software list (name, description, command, resource-heavy, 64-bit only)
 SOFTWARE_LIST=(
     "libreoffice-writer" "LibreOffice Writer - Word processor" "sudo apt-get install -y libreoffice-writer" "1" "0"
     "abiword" "AbiWord - Lightweight word processor" "sudo apt-get install -y abiword" "0" "0"
     "focuswriter" "FocusWriter - Distraction-free writing" "sudo apt-get install -y focuswriter" "0" "0"
-    "manuskript" "Manuskript - Writing organization" "sudo snap install manuskript || (wget $MANUSKRIPT_URL -O /tmp/manuskript.deb && sudo dpkg -i /tmp/manuskript.deb && sudo apt-get install -f -y)" "0" "0"
-    "cherrytree" "CherryTree - Note-taking" "sudo snap install cherrytree || (wget $CHERRYTREE_URL -O /tmp/cherrytree.deb && sudo dpkg -i /tmp/cherrytree.deb && sudo apt-get install -f -y)" "0" "0"
-    "trelby" "Trelby - Screenwriting" "wget $TRELBY_URL -O /tmp/trelby.deb && sudo dpkg -i /tmp/trelby.deb && sudo apt-get install -f -y" "0" "0"
     "gedit" "Gedit - Text editor" "sudo apt-get install -y gedit" "0" "0"
     "vim" "Vim - Text editor" "sudo apt-get install -y vim" "0" "0"
     "emacs" "Emacs - Text editor" "sudo apt-get install -y emacs" "0" "0"
     "zim" "Zim - Desktop wiki for notes" "sudo apt-get install -y zim" "0" "0"
     "calibre" "Calibre - E-book management and formatting" "sudo apt-get install -y calibre" "1" "0"
     "sigil" "Sigil - E-book editor for EPUB" "flatpak install -y flathub com.sigil_ebook.Sigil" "1" "0"
-    "xournalpp" "Xournal - Handwritten notes" "sudo snap install xournalpp || (wget $XOURNALPP_URL -O /tmp/xournalpp.deb && sudo dpkg -i /tmp/xournalpp.deb && sudo apt-get install -f -y)" "0" "0"
     "okular" "Okular - Document viewer" "sudo apt-get install -y okular" "1" "0"
     "ne" "NE - Lightweight text editor" "sudo apt install -y ne" "0" "0"
     "evince" "Evince - Document viewer" "sudo apt-get install -y evince" "0" "0"
-    "dia" "Dia - Diagram creation" "sudo apt-get install -y dia" "1" "0"
     "freemind" "FreeMind - Mind mapping" "sudo snap install freemind || (wget $FREEMIND_URL -O /tmp/freemind.deb && sudo dpkg -i /tmp/freemind.deb && sudo apt-get install -f -y)" "1" "0"
     "ywriter" "yWriter - Novel writing" "sudo apt-get install -y wine && wget $YWRITER_URL -O /tmp/ywriter.zip && unzip /tmp/ywriter.zip -d /opt/ywriter && wine /opt/ywriter/yWriter7.exe /regserver && ln -s /opt/ywriter/yWriter7.exe /usr/local/bin/ywriter" "1" "0"
     "plume-creator" "Plume Creator - Writing organization" "sudo apt-get install -y plume-creator" "0" "0"
     "wordgrinder" "WordGrinder - Command-line word processor" "sudo apt-get install -y wordgrinder" "0" "0"
-    "kindle-create" "Kindle Create - KDP formatting tool" "sudo apt-get install -y wine && wget https://d2b7dn6lvfj4po.cloudfront.net/KindleCreate_1.83.3.0.exe -O /tmp/kindle-create.exe && wine /tmp/kindle-create.exe" "1" "0"
     "scrivener" "Scrivener - Writing and publishing tool" "wget $SCRIVENER_URL -O /tmp/scrivener.deb && sudo dpkg -i /tmp/scrivener.deb && sudo apt-get install -f -y" "1" "0"
     "pandoc" "Pandoc - Document converter for EPUB/PDF" "sudo apt-get install -y pandoc" "0" "0"
-    "texlive" "TeX Live - Typesetting for print books" "sudo apt-get install -y texlive-full" "1" "0"
 )
 
 # Add Obsidian if 64-bit
