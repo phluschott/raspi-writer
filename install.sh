@@ -215,7 +215,6 @@ SOFTWARE_LIST=(
     "okular" "Okular - Document viewer" "sudo apt-get install -y okular" "1" "0"
     "ne" "NE - Lightweight text editor" "sudo apt install -y ne" "0" "0"
     "evince" "Evince - Document viewer" "sudo apt-get install -y evince" "0" "0"
-    "freemind" "FreeMind - Mind mapping" "sudo snap install freemind || (wget $FREEMIND_URL -O /tmp/freemind.deb && sudo dpkg -i /tmp/freemind.deb && sudo apt-get install -f -y)" "1" "0"
     "ywriter" "yWriter - Novel writing" "sudo apt-get install -y wine && wget $YWRITER_URL -O /tmp/ywriter.zip && unzip /tmp/ywriter.zip -d /opt/ywriter && wine /opt/ywriter/yWriter7.exe /regserver && ln -s /opt/ywriter/yWriter7.exe /usr/local/bin/ywriter" "1" "0"
     "plume-creator" "Plume Creator - Writing organization" "sudo apt-get install -y plume-creator" "0" "0"
     "wordgrinder" "WordGrinder - Command-line word processor" "sudo apt-get install -y wordgrinder" "0" "0"
