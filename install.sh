@@ -1,12 +1,13 @@
 #!/bin/bash
 
-# Script to install software for writers on Raspberry Pi, configure GPIO displays, and set up a Wi-Fi hotspot
+# Script to install software for writers and publishers on Raspberry Pi, configure GPIO displays, and set up a Wi-Fi hotspot
 # Compatible with Raspberry Pi 2, 4, 5, and Zero (W and newer)
 # Uses whiptail for user interface, inspired by KM4ACK's 73Linux script
 # Checks for 64-bit OS to include Obsidian.md
 # Supports HDMI displays by default and GPIO displays (3.5" to 1080p)
 # Sets up Wi-Fi hotspot, activates if no known network is found
-# Automatically checks for the latest software versions
+# Automatically checks for the latest software versions for select tools
+# Includes publishing software for Amazon KDP, web, and print
 
 # Exit on error
 set -e
@@ -17,8 +18,8 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# Check for required dependencies (whiptail, curl, jq)
-for cmd in whiptail curl jq; do
+# Check for required dependencies (whiptail, curl, jq, bottles for Kindle Create)
+for cmd in whiptail curl jq bottles; do
     if ! command -v $cmd &> /dev/null; then
         echo "Installing $cmd..."
         apt-get update
@@ -99,8 +100,9 @@ CHERRYTREE_URL=$(get_latest_github_release "giuspen/cherrytree" "cherrytree.*_al
 TRELBY_URL=$(get_latest_github_release "trelby/trelby" "trelby.*_all\.deb" "https://github.com/trelby/trelby/releases/download/2.2/trelby_2.2_all.deb")
 XOURNALPP_URL=$(get_latest_github_release "xournalpp/xournalpp" "xournalpp.*Debian-bullseye\.deb" "https://github.com/xournalpp/xournalpp/releases/download/v1.2.3/xournalpp-1.2.3-Debian-bullseye.deb")
 FREEMIND_URL=$(get_latest_freemind "https://sourceforge.net/projects/freemind/files/freemind/0.9.0/freemind_0.9.0-1_all.deb")
-YWRITER_URL=$(get_latest_ywriter "http://www.spacejock.com/files/yWriter6_Linux.zip")
+YWRITER_URL=$(get_latest_ywriter "http://www.spacejock.com/yWriter6_Linux.zip")
 OBSIDIAN_URL=$(get_latest_github_release "obsidianmd/obsidian-releases" "Obsidian.*\.AppImage" "https://github.com/obsidianmd/obsidian-releases/releases/download/v1.7.4/Obsidian-1.7.4.AppImage")
+SCRIVENER_URL=$(get_latest_github_release "LiteratureAndLatte/scrivener" "Scrivener.*\.deb" "https://www.literatureandlatte.com/files/scrivener-3.3.6-amd64.deb")
 
 # Software list (name, description, command, resource-heavy, 64-bit only)
 SOFTWARE_LIST=(
@@ -114,8 +116,8 @@ SOFTWARE_LIST=(
     "vim" "Vim - Text editor" "sudo apt-get install -y vim" "0" "0"
     "emacs" "Emacs - Text editor" "sudo apt-get install -y emacs" "0" "0"
     "zim" "Zim - Desktop wiki for notes" "sudo apt-get install -y zim" "0" "0"
-    "calibre" "Calibre - E-book management" "sudo apt-get install -y calibre" "1" "0"
-    "sigil" "Sigil - E-book editor" "flatpak install -y flathub com.sigil_ebook.Sigil" "1" "0"
+    "calibre" "Calibre - E-book management and formatting" "sudo apt-get install -y calibre" "1" "0"
+    "sigil" "Sigil - E-book editor for EPUB" "flatpak install -y flathub com.sigil_ebook.Sigil" "1" "0"
     "xournalpp" "Xournal - Handwritten notes" "sudo snap install xournalpp || (wget $XOURNALPP_URL -O /tmp/xournalpp.deb && sudo dpkg -i /tmp/xournalpp.deb && sudo apt-get install -f -y)" "0" "0"
     "okular" "Okular - Document viewer" "sudo apt-get install -y okular" "1" "0"
     "ne" "NE - Lightweight text editor" "sudo apt install -y ne" "0" "0"
@@ -125,6 +127,10 @@ SOFTWARE_LIST=(
     "ywriter" "yWriter - Novel writing" "sudo apt-get install -y wine && wget $YWRITER_URL -O /tmp/ywriter.zip && unzip /tmp/ywriter.zip -d /opt/ywriter && wine /opt/ywriter/yWriter6.exe /regserver && ln -s /opt/ywriter/yWriter6.exe /usr/local/bin/ywriter" "1" "0"
     "plume-creator" "Plume Creator - Writing organization" "sudo apt-get install -y plume-creator" "0" "0"
     "wordgrinder" "WordGrinder - Command-line word processor" "sudo apt-get install -y wordgrinder" "0" "0"
+    "kindle-create" "Kindle Create - KDP formatting tool" "sudo apt-get install -y wine && wget https://d2b7dn6lvfj4po.cloudfront.net/KindleCreate_1.83.3.0.exe -O /tmp/kindle-create.exe && bottles-cli run -b KindleCreate -e /tmp/kindle-create.exe" "1" "0"
+    "scrivener" "Scrivener - Writing and publishing tool" "wget $SCRIVENER_URL -O /tmp/scrivener.deb && sudo dpkg -i /tmp/scrivener.deb && sudo apt-get install -f -y" "1" "0"
+    "pandoc" "Pandoc - Document converter for EPUB/PDF" "sudo apt-get install -y pandoc" "0" "0"
+    "texlive" "TeX Live - Typesetting for print books" "sudo apt-get install -y texlive-full" "1" "0"
 )
 
 # Add Obsidian if 64-bit
@@ -153,7 +159,7 @@ for ((i=0; i<${#SOFTWARE_LIST[@]}; i+=5)); do
 done
 
 # Software selection
-SELECTED_SOFTWARE=$(whiptail --title "Select Software for Writers" --checklist \
+SELECTED_SOFTWARE=$(whiptail --title "Select Software for Writers and Publishers" --checklist \
     "Choose software to install (Pi Zero: heavy apps disabled)" 20 78 12 \
     "${CHECKLIST[@]}" 3>&1 1>&2 2>&3)
 
@@ -324,5 +330,5 @@ else
 fi
 
 # Final message
-whiptail --msgbox "Setup complete! Reboot to apply changes." 8 50
+whiptail --msgbox "Setup complete! Reboot to apply changes.\n\nNote: For Reedsy Studio, open Chromium and visit https://studio.reedsy.com to format eBooks and print books for free." 10 60
 echo "Setup complete. Please reboot your Raspberry Pi."
