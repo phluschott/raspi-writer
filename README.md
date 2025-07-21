@@ -1,19 +1,21 @@
 # Raspi-Writer: Software Installer for Writers on Raspberry Pi
 
-`raspi-writer` is a Bash script (`install.sh`) designed for writers, novelists, storytellers, and written content creators to easily install a curated list of writing software on a Raspberry Pi. It supports Raspberry Pi 2, 4, 5, and Zero (W and newer), with a user-friendly interface inspired by KM4ACK's 73Linux script. The script checks for a 64-bit OS to include Obsidian.md, disables resource-heavy apps for Pi Zero, configures GPIO-attached displays (3.5" to 1080p), and offers optional Wi-Fi hotspot setup if no known Wi-Fi networks are found.
+`raspi-writer` is a Bash script (`install.sh`) designed for writers, novelists, storytellers, and written content creators to easily install a curated list of writing software on a Raspberry Pi. It supports Raspberry Pi 2, 4, 5, and Zero (W and newer), with a user-friendly `whiptail` interface inspired by [KM4ACK's 73Linux script](https://github.com/km4ack/73Linux). The script checks for a 64-bit OS to include Obsidian.md, disables resource-heavy apps for Pi Zero, configures GPIO-attached displays (3.5" to 1080p), and offers optional Wi-Fi hotspot setup that activates only when no known Wi-Fi networks are found.
 
 ## Features
 
 - **Software Selection**: Choose from 20 writing tools (e.g., LibreOffice Writer, FocusWriter, Vim, Obsidian) via a `whiptail` checkbox interface.
-- **Pi Zero Compatibility**: Automatically greys out resource-heavy apps (e.g., LibreOffice, Calibre) when running on a Raspberry Pi Zero to ensure performance.
+- **Pi Zero Compatibility**: Automatically disables resource-heavy apps (e.g., LibreOffice, Calibre, Obsidian) on Raspberry Pi Zero to ensure performance.
 - **64-bit OS Support**: Detects 64-bit OS and offers Obsidian.md for advanced note-taking (requires 64-bit Raspberry Pi OS).
 - **Display Support**: Configures GPIO-attached displays (e.g., Waveshare 3.5", Official 7" Touchscreen) or defaults to HDMI, with warnings for small displays (e.g., 3.5" or smaller) about GUI scaling issues.
-- **Wi-Fi Hotspot Setup**: If no known Wi-Fi networks are detected, users can configure a hotspot with custom SSID, password, and authentication type (WPA-PSK, WPA3-PSK, WEP, or Open).
-- **Error Handling**: Includes checks for root privileges, valid inputs, and installation failures, with user-friendly error messages.
+- **Wi-Fi Hotspot Setup**: Allows configuration of a hotspot with custom SSID, password, and authentication type (WPA-PSK, WPA3-PSK, WEP, or Open), which activates on boot only if no known Wi-Fi networks are found.
+- **Installation Time Warning**: Informs users that a full installation may take 20-60 minutes, depending on network speed and Raspberry Pi model.
+- **Robust Installation**: Includes fallback methods (e.g., `.deb` packages) for software like Manuskript, CherryTree, Trelby, Xournal++, and FreeMind if Snap or Flatpak installations fail.
+- **Error Handling**: Logs installation attempts to `/tmp/install_<software>.log` and displays user-friendly error messages via `whiptail` for failures.
 
 ## Supported Software
 
-The script offers the following software, with resource-heavy apps marked for Pi Zero compatibility:
+The script offers the following software, with resource-heavy apps marked for Pi Zero compatibility and 64-bit requirements:
 
 | Software           | Purpose                         | Resource-Heavy for Pi Zero? | 64-bit Only? |
 |--------------------|---------------------------------|----------------------------|--------------|
@@ -29,7 +31,7 @@ The script offers the following software, with resource-heavy apps marked for Pi
 | Zim                | Desktop wiki for notes         | No                         | No           |
 | Calibre            | E-book management              | Yes                        | No           |
 | Sigil              | E-book editor                  | Yes                        | No           |
-| Xournal            | Handwritten notes              | No                         | No           |
+| Xournal++          | Handwritten notes              | No                         | No           |
 | Okular             | Document viewer                | Yes                        | No           |
 | Evince             | Document viewer                | No                         | No           |
 | Dia                | Diagram creation               | Yes                        | No           |
@@ -58,9 +60,10 @@ After software selection, the script offers configuration for common GPIO-attach
 
 - **Hardware**: Raspberry Pi 2, 4, 5, or Zero (W and newer).
 - **Operating System**: Raspberry Pi OS (Debian-based, 32-bit or 64-bit for Obsidian).
-- **Internet**: Required for downloading packages and AppImages.
+- **Internet**: Required for downloading packages, AppImages, and `.deb` files.
 - **Permissions**: Script must be run with `sudo` for root privileges.
-- **Dependencies**: `whiptail`, `hostapd`, `dnsmasq` (installed automatically if needed).
+- **Dependencies**: `whiptail`, `snapd`, `flatpak`, `hostapd`, `dnsmasq`, `wine` (installed automatically if needed).
+- **Disk Space**: Ensure sufficient space (several GB for full installation, especially for LibreOffice, Calibre, and Obsidian).
 
 ## Installation and Usage
 
@@ -81,10 +84,11 @@ After software selection, the script offers configuration for common GPIO-attach
    ```
 
 4. **Follow Prompts**:
+   - **Installation Time Warning**: Note that a full installation may take 20-60 minutes.
    - **Pi Zero Check**: Confirm if using a Pi Zero to disable resource-heavy apps.
    - **Software Selection**: Use checkboxes to select desired software.
    - **Display Selection**: Choose a GPIO display or select "none" for HDMI.
-   - **Wi-Fi Hotspot**: If no Wi-Fi networks are found, configure a hotspot with SSID, password, and authentication type, or skip.
+   - **Wi-Fi Hotspot**: Configure a hotspot with SSID, password, and authentication type, or skip. The hotspot activates on boot only if no known Wi-Fi networks are found.
    - **Reboot**: Reboot the Pi after setup to apply changes.
 
 5. **Reboot**:
@@ -94,11 +98,12 @@ After software selection, the script offers configuration for common GPIO-attach
 
 ## Notes
 
+- **Installation Time**: A full installation may take 20-60 minutes, depending on network speed and Raspberry Pi model (e.g., Pi Zero is slower).
+- **Software Installation**: Manuskript, CherryTree, Trelby, Xournal++, FreeMind, Sigil, and Obsidian use fallback `.deb` or manual installations if Snap/Flatpak fails. yWriter uses Wine for compatibility. Check `/tmp/install_<software>.log` for errors.
 - **Pi Zero**: Resource-heavy apps (e.g., LibreOffice, Calibre, Obsidian) are disabled on Pi Zero to prevent performance issues.
 - **Small Displays**: For 3.5" or smaller displays, the script warns about GUI scaling issues and recommends terminal-based apps (e.g., Vim, WordGrinder).
-- **Hotspot Setup**: Requires `hostapd` and `dnsmasq`. Passwords must be 8+ characters. Supports WPA-PSK, WPA3-PSK, WEP, or Open authentication.
-- **Obsidian**: Only available on 64-bit OS (Pi 4/5 with Raspberry Pi OS 64-bit).
-- **Error Handling**: The script checks for root privileges, valid inputs, and installation failures, displaying user-friendly messages via `whiptail`.
+- **Wi-Fi Hotspot**: Setup is always offered and activates on boot only if no known Wi-Fi networks are found, using a script in `/etc/network/if-pre-up.d/`.
+- **Troubleshooting**: If an installation fails, check the relevant log file in `/tmp/install_<software>.log`. Verify internet connectivity, Snap/Flatpak functionality, and disk space. For Snap issues, run `snap install <package>` manually to diagnose.
 
 ## Contributing
 
