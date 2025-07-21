@@ -1,120 +1,45 @@
-# Raspi-Writer: Software Installer for Writers on Raspberry Pi
+# Raspi-Writer: Software Installer for Writers and Publishers on Raspberry Pi
 
-`raspi-writer` is a Bash script (`install.sh`) designed for writers, novelists, storytellers, and written content creators to easily install a curated list of writing software on a Raspberry Pi. It supports Raspberry Pi 2, 4, 5, and Zero (W and newer), with a user-friendly `whiptail` interface inspired by [KM4ACK's 73Linux script](https://github.com/km4ack/73Linux). The script checks for a 64-bit OS to include Obsidian.md, disables resource-heavy apps for Pi Zero, configures GPIO-attached displays (3.5" to 1080p), and offers optional Wi-Fi hotspot setup that activates only when no known Wi-Fi networks are found.
+`raspi-writer` is a Bash script (`install_writers_software.sh`) designed for writers, novelists, storytellers, and publishers to easily install a curated list of writing and publishing software on a Raspberry Pi. It supports Raspberry Pi 2, 4, 5, and Zero (W and newer), with a user-friendly `whiptail` interface inspired by [KM4ACK's 73Linux script](https://github.com/km4ack/73Linux). The script checks for a 64-bit OS to include Obsidian.md, disables resource-heavy apps for Pi Zero, configures GPIO-attached displays (3.5" to 1080p), and offers optional Wi-Fi hotspot setup that activates only when no known Wi-Fi networks are found. It automatically checks for the latest software versions for select tools and includes publishing software for Amazon KDP, web, and print.
 
 ## Features
+- **Software Installation**: Installs a curated list of writing and publishing tools, including word processors, text editors, note-taking apps, e-book management tools, and KDP-compatible formatting software.
+- **GPIO Display Support**: Configures HDMI or GPIO-attached displays (e.g., Waveshare 3.5", 4", 5", 7", 10.1", or Official Raspberry Pi 7" Touchscreen).
+- **Wi-Fi Hotspot**: Optional setup for a Wi-Fi hotspot (WPA2, WPA3, WEP, or open) that activates only if no known Wi-Fi networks are detected.
+- **Version Checking**: Automatically fetches the latest versions of Manuskript, CherryTree, Trelby, Xournal++, FreeMind, yWriter, Obsidian, and Scrivener using GitHub and SourceForge APIs, with fallbacks to stable versions.
+- **Pi Zero Optimization**: Disables resource-heavy apps (e.g., LibreOffice, Calibre, Sigil, Kindle Create, Scrivener, TeX Live) on Pi Zero to prevent performance issues.
+- **64-bit Support**: Includes Obsidian.md for 64-bit OS only.
+- **Publishing Support**: Includes tools like Kindle Create, Scrivener, Pandoc, and TeX Live for formatting eBooks and print books for Amazon KDP and other platforms. Reedsy Studio is accessible via a browser for additional formatting.
 
-- **Software Selection**: Choose from 20 writing tools (e.g., LibreOffice Writer, FocusWriter, Vim, Obsidian) via a `whiptail` checkbox interface.
-- **Pi Zero Compatibility**: Automatically disables resource-heavy apps (e.g., LibreOffice, Calibre, Obsidian) on Raspberry Pi Zero to ensure performance.
-- **64-bit OS Support**: Detects 64-bit OS and offers Obsidian.md for advanced note-taking (requires 64-bit Raspberry Pi OS).
-- **Display Support**: Configures GPIO-attached displays (e.g., Waveshare 3.5", Official 7" Touchscreen) or defaults to HDMI, with warnings for small displays (e.g., 3.5" or smaller) about GUI scaling issues.
-- **Wi-Fi Hotspot Setup**: Allows configuration of a hotspot with custom SSID, password, and authentication type (WPA-PSK, WPA3-PSK, WEP, or Open), which activates on boot only if no known Wi-Fi networks are found.
-- **Installation Time Warning**: Informs users that a full installation may take 20-60 minutes, depending on network speed and Raspberry Pi model.
-- **Robust Installation**: Includes fallback methods (e.g., `.deb` packages) for software like Manuskript, CherryTree, Trelby, Xournal++, and FreeMind if Snap or Flatpak installations fail.
-- **Error Handling**: Logs installation attempts to `/tmp/install_<software>.log` and displays user-friendly error messages via `whiptail` for failures.
-
-## Supported Software
-
-The script offers the following software, with resource-heavy apps marked for Pi Zero compatibility and 64-bit requirements:
-
-| Software           | Purpose                         | Resource-Heavy for Pi Zero? | 64-bit Only? |
-|--------------------|---------------------------------|----------------------------|--------------|
-| LibreOffice Writer | Word processor                 | Yes                        | No           |
-| AbiWord            | Lightweight word processor     | No                         | No           |
-| FocusWriter        | Distraction-free writing       | No                         | No           |
-| Manuskript         | Writing organization           | No                         | No           |
-| CherryTree         | Note-taking                    | No                         | No           |
-| Trelby             | Screenwriting                  | No                         | No           |
-| Gedit              | Text editor                    | No                         | No           |
-| Vim                | Text editor                    | No                         | No           |
-| Emacs              | Text editor                    | No                         | No           |
-| Zim                | Desktop wiki for notes         | No                         | No           |
-| Calibre            | E-book management              | Yes                        | No           |
-| Sigil              | E-book editor                  | Yes                        | No           |
-| Xournal++          | Handwritten notes              | No                         | No           |
-| Okular             | Document viewer                | Yes                        | No           |
-| Evince             | Document viewer                | No                         | No           |
-| Dia                | Diagram creation               | Yes                        | No           |
-| FreeMind           | Mind mapping                   | Yes                        | No           |
-| yWriter            | Novel writing                  | Yes                        | No           |
-| Plume Creator      | Writing organization           | No                         | No           |
-| WordGrinder        | Command-line word processor    | No                         | No           |
-| Obsidian           | Note-taking and knowledge base | Yes                        | Yes          |
-
-## Supported GPIO Displays
-
-After software selection, the script offers configuration for common GPIO-attached displays (HDMI is supported by default):
-
-| Display                     | Size/Resolution     | Notes                                                                 |
-|-----------------------------|---------------------|----------------------------------------------------------------------|
-| Waveshare 3.5" LCD (A)      | 3.5", 480x320       | Low resolution, suitable for terminal apps on Pi Zero.               |
-| Waveshare 4" HDMI LCD       | 4", 800x480         | Moderate resolution, supports GUI apps, may lag on Pi Zero.          |
-| Waveshare 5" HDMI LCD (B)   | 5", 800x480         | Good for GUI apps on Pi 4/5, slow on Pi Zero for heavy apps.         |
-| Elecrow 5" HDMI Display     | 5", 800x480         | Similar to Waveshare 5", suitable for lightweight GUI apps.          |
-| Waveshare 7" HDMI LCD (C)   | 7", 1024x600        | Higher resolution, good for Pi 4/5, not recommended for Pi Zero.     |
-| Official Raspberry Pi 7" Touch | 7", 800x480       | Official support, works with all apps on Pi 4/5, slow on Pi Zero.    |
-| Waveshare 10.1" HDMI LCD    | 10.1", 1280x800     | High resolution, suitable for Pi 4/5, too heavy for Pi Zero.         |
-| Generic SPI TFT (e.g., ILI9341) | 2.8"-3.2", 320x240 | Very low resolution, ideal for terminal apps on Pi Zero.             |
-
-## Requirements
-
-- **Hardware**: Raspberry Pi 2, 4, 5, or Zero (W and newer).
-- **Operating System**: Raspberry Pi OS (Debian-based, 32-bit or 64-bit for Obsidian).
-- **Internet**: Required for downloading packages, AppImages, and `.deb` files.
-- **Permissions**: Script must be run with `sudo` for root privileges.
-- **Dependencies**: `whiptail`, `snapd`, `flatpak`, `hostapd`, `dnsmasq`, `wine` (installed automatically if needed).
-- **Disk Space**: Ensure sufficient space (several GB for full installation, especially for LibreOffice, Calibre, and Obsidian).
-
-## Installation and Usage
-
-1. **Clone the Repository**:
+## Installation
+1. Clone the repository:
    ```bash
-   git clone https://github.com/phluschott/raspi-writer.git
+   git clone https://github.com/phluschott/raspi-writer
+   ```
+2. Navigate to the directory:
+   ```bash
    cd raspi-writer
    ```
-
-2. **Make the Script Executable**:
+3. Make the script executable:
    ```bash
-   chmod +x install.sh
+   chmod +x install_writers_software.sh
+   ```
+4. Run the script as root:
+   ```bash
+   sudo ./install_writers_software.sh
    ```
 
-3. **Run the Script**:
-   ```bash
-   sudo ./install.sh
-   ```
-
-4. **Follow Prompts**:
-   - **Installation Time Warning**: Note that a full installation may take 20-60 minutes.
-   - **Pi Zero Check**: Confirm if using a Pi Zero to disable resource-heavy apps.
-   - **Software Selection**: Use checkboxes to select desired software.
-   - **Display Selection**: Choose a GPIO display or select "none" for HDMI.
-   - **Wi-Fi Hotspot**: Configure a hotspot with SSID, password, and authentication type, or skip. The hotspot activates on boot only if no known Wi-Fi networks are found.
-   - **Reboot**: Reboot the Pi after setup to apply changes.
-
-5. **Reboot**:
-   ```bash
-   sudo reboot
-   ```
+## Usage
+- **Software Selection**: Use the `whiptail` checklist to select writing and publishing software. Resource-heavy apps are disabled on Pi Zero, and 64-bit-only apps (e.g., Obsidian) are disabled on 32-bit OS.
+- **Display Configuration**: Choose an HDMI or GPIO display. Small displays (e.g., 3.5" Waveshare) may have scaling issues with GUI apps; terminal-based apps are recommended.
+- **Wi-Fi Hotspot**: Optionally configure a hotspot with a custom SSID, password, and authentication type. It activates on boot only if no known Wi-Fi networks are found.
+- **Publishing**: Use Kindle Create, Scrivener, Calibre, Sigil, Pandoc, or TeX Live for KDP-compatible eBook and print book formatting. Access Reedsy Studio via Chromium at `https://studio.reedsy.com` for free web-based formatting.
 
 ## Notes
-
-- **Installation Time**: A full installation may take 20-60 minutes, depending on network speed and Raspberry Pi model (e.g., Pi Zero is slower).
-- **Software Installation**: Manuskript, CherryTree, Trelby, Xournal++, FreeMind, Sigil, and Obsidian use fallback `.deb` or manual installations if Snap/Flatpak fails. yWriter uses Wine for compatibility. Check `/tmp/install_<software>.log` for errors.
-- **Pi Zero**: Resource-heavy apps (e.g., LibreOffice, Calibre, Obsidian) are disabled on Pi Zero to prevent performance issues.
-- **Small Displays**: For 3.5" or smaller displays, the script warns about GUI scaling issues and recommends terminal-based apps (e.g., Vim, WordGrinder).
-- **Wi-Fi Hotspot**: Setup is always offered and activates on boot only if no known Wi-Fi networks are found, using a script in `/etc/network/if-pre-up.d/`.
-- **Troubleshooting**: If an installation fails, check the relevant log file in `/tmp/install_<software>.log`. Verify internet connectivity, Snap/Flatpak functionality, and disk space. For Snap issues, run `snap install <package>` manually to diagnose.
-
-## Contributing
-
-Contributions are welcome! Please submit issues or pull requests on [GitHub](https://github.com/phluschott/raspi-writer). Ensure changes are compatible with Raspberry Pi OS and maintain the `whiptail` interface.
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- Inspired by [KM4ACK's 73Linux script](https://github.com/km4ack/73Linux).
-- Display configurations based on [Waveshare Wiki](https://www.waveshare.com/wiki/) and [Raspberry Pi Documentation](https://www.raspberrypi.com/documentation/).
-- Software recommendations sourced from Reddit (r/raspberry_pi, r/writerDeck) and Raspberry Pi forums.
+- The script automatically checks for the latest versions of Manuskript, CherryTree, Trelby, Xournal++, FreeMind, yWriter, Obsidian, and Scrivener using GitHub and SourceForge APIs, falling back to stable versions if the check fails.
+- Installation may take 20-60 minutes, depending on your Raspberry Pi model and internet speed.
+- Reedsy Studio is a web-based tool and does not require installation; access it via Chromium.
+- Kindle Create requires Wine and Bottles, which may have performance overhead on lower-end devices.
+- TeX Live is a large installation (several GB); ensure sufficient storage on your Raspberry Pi.
+- Check `/tmp/install_<software>.log` for installation errors.
+- A reboot is required after setup to apply display and hotspot configurations.
