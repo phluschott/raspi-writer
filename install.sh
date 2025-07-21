@@ -95,13 +95,17 @@ if [ $? -ne 0 ]; then
 fi
 
 # Install selected software
+# Remove quotes from SELECTED_SOFTWARE to handle multiple selections
+SELECTED_SOFTWARE=$(echo $SELECTED_SOFTWARE | tr -d '"')
 for SOFTWARE in $SELECTED_SOFTWARE; do
     for ((i=0; i<${#SOFTWARE_LIST[@]}; i+=5)); do
         if [ "${SOFTWARE_LIST[i]}" = "$SOFTWARE" ]; then
             echo "Installing ${SOFTWARE_LIST[i]}..."
-            eval "${SOFTWARE_LIST[i+2]}" || {
-                whiptail --msgbox "Failed to install ${SOFTWARE_LIST[i]}. Check logs." 8 50
+            # Execute the installation command
+            eval "${SOFTWARE_LIST[i+2]}" > /tmp/install_${SOFTWARE}.log 2>&1 || {
+                whiptail --msgbox "Failed to install ${SOFTWARE_LIST[i]}. Check /tmp/install_${SOFTWARE}.log for details." 8 60
             }
+            echo "${SOFTWARE_LIST[i]} installation completed."
         fi
     done
 done
