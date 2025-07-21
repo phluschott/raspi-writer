@@ -18,8 +18,8 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# Check for required dependencies (whiptail, curl, jq, bottles for Kindle Create)
-for cmd in whiptail curl jq bottles; do
+# Check for required dependencies (whiptail, curl, jq)
+for cmd in whiptail curl jq; do
     if ! command -v $cmd &> /dev/null; then
         echo "Installing $cmd..."
         apt-get update
@@ -42,6 +42,15 @@ if ! command -v flatpak &> /dev/null; then
     apt-get update
     apt-get install -y flatpak
     flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+fi
+
+# Check for bottles and install via Flatpak if missing
+if ! flatpak list | grep -q com.usebottles.bottles; then
+    echo "Installing bottles via Flatpak..."
+    flatpak install -y flathub com.usebottles.bottles || {
+        echo "Failed to install bottles. Check Flatpak configuration and internet connection."
+        exit 1
+    }
 fi
 
 # Inform user about installation time
@@ -127,7 +136,7 @@ SOFTWARE_LIST=(
     "ywriter" "yWriter - Novel writing" "sudo apt-get install -y wine && wget $YWRITER_URL -O /tmp/ywriter.zip && unzip /tmp/ywriter.zip -d /opt/ywriter && wine /opt/ywriter/yWriter6.exe /regserver && ln -s /opt/ywriter/yWriter6.exe /usr/local/bin/ywriter" "1" "0"
     "plume-creator" "Plume Creator - Writing organization" "sudo apt-get install -y plume-creator" "0" "0"
     "wordgrinder" "WordGrinder - Command-line word processor" "sudo apt-get install -y wordgrinder" "0" "0"
-    "kindle-create" "Kindle Create - KDP formatting tool" "sudo apt-get install -y wine && wget https://d2b7dn6lvfj4po.cloudfront.net/KindleCreate_1.83.3.0.exe -O /tmp/kindle-create.exe && bottles-cli run -b KindleCreate -e /tmp/kindle-create.exe" "1" "0"
+    "kindle-create" "Kindle Create - KDP formatting tool" "sudo apt-get install -y wine && wget https://d2b7dn6lvfj4po.cloudfront.net/KindleCreate_1.83.3.0.exe -O /tmp/kindle-create.exe && flatpak run com.usebottles.bottles --create KindleCreate --exec /tmp/kindle-create.exe" "1" "0"
     "scrivener" "Scrivener - Writing and publishing tool" "wget $SCRIVENER_URL -O /tmp/scrivener.deb && sudo dpkg -i /tmp/scrivener.deb && sudo apt-get install -f -y" "1" "0"
     "pandoc" "Pandoc - Document converter for EPUB/PDF" "sudo apt-get install -y pandoc" "0" "0"
     "texlive" "TeX Live - Typesetting for print books" "sudo apt-get install -y texlive-full" "1" "0"
