@@ -1,0 +1,68 @@
+.ots-bulk-modal .modal-content {
+  min-width: 520px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.ots-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 0.9em;
+  color: var(--text-muted);
+}
+
+.ots-btn-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.ots-count {
+  margin-left: auto;
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+.ots-file-list {
+  overflow-y: auto;
+  flex: 1;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 6px;
+  margin-bottom: 12px;
+  max-height: 40vh;
+}
+
+.ots-file-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  cursor: default;
+}
+
+.ots-file-row:hover {
+  background: var(--background-modifier-hover);
+}
+
+.ots-file-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.ots-stamped {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.ots-progress {
+  font-size: 0.85em;
+  color: var(--text-accent);
+  margin-bottom: 10px;
+  min-height: 1.4em;
+}

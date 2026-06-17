@@ -1,0 +1,10 @@
+{
+  "id": "obsidian-ots-timestamp",
+  "name": "OpenTimestamps IP Proof",
+  "version": "1.0.0",
+  "minAppVersion": "1.0.0",
+  "description": "Timestamp your notes on the Bitcoin blockchain via OpenTimestamps to prove existence and protect intellectual property.",
+  "author": "raspi-writer",
+  "authorUrl": "",
+  "isDesktopOnly": true
+}
